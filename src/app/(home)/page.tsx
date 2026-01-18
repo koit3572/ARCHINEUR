@@ -20,7 +20,7 @@ export default function HomePage() {
       if (!mounted) return;
 
       if (user) {
-        router.replace("/practice"); // 첫 protected 페이지
+        router.replace("/workbench/stream"); // 첫 protected 페이지
       }
     };
 

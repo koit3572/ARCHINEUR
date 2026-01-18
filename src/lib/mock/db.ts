@@ -17,6 +17,35 @@ export type UserRow = {
   created_at: string;
 };
 
+export type NoteFavoriteRow = {
+  id: string;
+  user_id: string;
+  note_id: string;
+  created_at: string;
+};
+
+export type NoteRecentRow = {
+  id: string;
+  user_id: string;
+  note_id: string;
+  last_opened_at: string; // 정렬 기준
+  created_at: string;
+  updated_at: string;
+};
+
+export type NoteProgressRow = {
+  id: string;
+  user_id: string;
+  note_id: string;
+
+  tokens_total: number;
+  tokens_filled: number;
+  tokens_correct: number;
+
+  created_at: string;
+  updated_at: string;
+};
+
 export type RootRow = {
   id: string;
   user_id: string;
@@ -73,6 +102,9 @@ export type MockDB = {
   notes: NoteRow[];
   note_sections: NoteSectionRow[];
   note_blocks: NoteBlockRow[];
+  note_favorites: NoteFavoriteRow[];
+  note_recents: NoteRecentRow[];
+  note_progress: NoteProgressRow[];
 };
 
 /* =========================
