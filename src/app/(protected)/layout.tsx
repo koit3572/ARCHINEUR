@@ -2,7 +2,7 @@
 
 import type { ReactNode } from "react";
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 import PageLoading from "@/components/layout/PageLoading";
 
 export default function ProtectedLayout({ children }: { children: ReactNode }) {
@@ -10,6 +10,7 @@ export default function ProtectedLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     let mounted = true;
+    const supabase = createClient();
 
     const run = async () => {
       const {

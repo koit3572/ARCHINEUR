@@ -23,7 +23,7 @@ export default function ModeNav({ active, onGoNotes, onGoStream }: Props) {
 
   return (
     <section className="space-y-3">
-      <div className="text-[12px] font-semibold text-slate-500">학습 영역</div>
+      <div className="text-xs font-semibold text-slate-500">학습 영역</div>
 
       {/* 노트목록 */}
       <button
@@ -50,10 +50,10 @@ export default function ModeNav({ active, onGoNotes, onGoStream }: Props) {
             </span>
 
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold">노트목록</div>
+              <div className="text-sm font-semibold">노트목록</div>
               <div
                 className={cx(
-                  "mt-1 text-[11px]",
+                  "mt-1 text-xs",
                   notesActive ? "text-white/75" : "text-slate-500",
                 )}
               >
@@ -89,10 +89,10 @@ export default function ModeNav({ active, onGoNotes, onGoStream }: Props) {
             </span>
 
             <div className="min-w-0">
-              <div className="text-[13px] font-semibold">연습풀이</div>
+              <div className="text-sm font-semibold">연습풀이</div>
               <div
                 className={cx(
-                  "mt-1 text-[11px]",
+                  "mt-1 text-xs",
                   streamActive ? "text-white/75" : "text-slate-500",
                 )}
               >

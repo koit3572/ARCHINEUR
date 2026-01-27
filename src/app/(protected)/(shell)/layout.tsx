@@ -12,24 +12,34 @@ import { MarkdownTokenSettingsProvider } from "@/features/protected/shell/workbe
 export default function ShellLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname();
 
+  // 모바일 사이드바 열림 상태
   const [mobileOpen, setMobileOpen] = useState(false);
   const onOpenMobile = useCallback(() => setMobileOpen(true), []);
   const onCloseMobile = useCallback(() => setMobileOpen(false), []);
 
+  // 화면 모드 결정(피드/노트)
   const isPostView = pathname.includes("/post/");
   const isStreamView = pathname.startsWith("/workbench/stream");
 
-  // ✅ query(mode=feed) 제거: 라우트로만 판단
   const mode: StreamMode = useMemo(() => {
     if (isPostView) return "note";
     return isStreamView ? "feed" : "note";
   }, [isPostView, isStreamView]);
 
+  // 새 노트 작성 화면에서 TopDock 높이만큼 상단 패딩 보정
+  const isNoteNew = pathname === "/notes/new";
+
   return (
     <MarkdownTokenSettingsProvider mode={mode}>
-      <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-50">
-        {/* ✅ 사이드바 공간 확보 */}
-        <div className="mx-auto max-w-[1320px] px-6 py-10 lg:pr-[360px]">
+      <main className="min-h-screen bg-white">
+        <div
+          className="w-full px-4 py-6 sm:px-6 sm:py-8 lg:pr-[384px]"
+          style={
+            isNoteNew
+              ? { paddingTop: "var(--note-new-dock-h, 0px)" }
+              : undefined
+          }
+        >
           {children}
         </div>
 

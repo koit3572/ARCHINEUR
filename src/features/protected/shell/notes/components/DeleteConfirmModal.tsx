@@ -20,7 +20,7 @@ export default function DeleteConfirmModal({
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-[9999Z]">
+    <div className="fixed inset-0 z-[9999]">
       <div
         className="absolute inset-0 bg-black/40"
         onClick={onCancel}
@@ -29,10 +29,8 @@ export default function DeleteConfirmModal({
       <div className="absolute inset-0 flex items-center justify-center px-6">
         <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg">
           <div className="px-5 py-4">
-            <div className="text-[14px] font-semibold text-slate-900">
-              {title}
-            </div>
-            <div className="mt-2 text-[12px] leading-5 text-slate-600">
+            <div className="text-sm font-semibold text-slate-900">{title}</div>
+            <div className="mt-2 text-xs leading-5 text-slate-600">
               {description}
             </div>
           </div>
@@ -41,14 +39,14 @@ export default function DeleteConfirmModal({
             <button
               type="button"
               onClick={onCancel}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50"
             >
               {cancelText}
             </button>
             <button
               type="button"
               onClick={onConfirm}
-              className="rounded-lg bg-rose-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-rose-700"
+              className="rounded-lg bg-rose-600 px-3 py-2 text-xs font-semibold text-white hover:bg-rose-700"
             >
               {confirmText}
             </button>

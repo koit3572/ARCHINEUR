@@ -79,14 +79,14 @@ export default function NextPrevSection({
           <div className="flex items-center gap-2">
             <span
               className={cx(
-                "inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-wide",
+                "inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold tracking-wide",
                 disabled
                   ? "border-slate-200 bg-slate-50 text-slate-500"
                   : "border-slate-200 bg-white text-slate-600",
               )}
             >
               {kind === "prev" ? "이전" : "다음"}
-              <span className="ml-2 text-[10px] tracking-widest text-slate-400">
+              <span className="ml-2 text-xs tracking-widest text-slate-400">
                 {kind === "prev" ? "PREV" : "NEXT"}
               </span>
             </span>
@@ -96,7 +96,7 @@ export default function NextPrevSection({
         <div className="mt-3 flex items-start justify-between gap-3">
           <div
             className={cx(
-              "flex gap-1 min-w-0 line-clamp-2 text-[16px] leading-snug",
+              "flex gap-1 min-w-0 line-clamp-2 text-base leading-snug",
               disabled ? "text-slate-500" : "text-slate-900",
             )}
           >
@@ -106,7 +106,7 @@ export default function NextPrevSection({
 
             <div
               className={cx(
-                "flex items-center shrink-0 text-right text-[8px]",
+                "flex items-center shrink-0 text-right text-xs",
                 disabled ? "text-slate-400" : "text-slate-500",
               )}
               title={meta || ""}
@@ -135,7 +135,7 @@ export default function NextPrevSection({
     <section className="mt-8 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
       <div className="border-b border-slate-200 px-6 py-4">
         <div className="flex gap-3">
-          <div className="text-[12px] font-semibold text-slate-900">
+          <div className="text-xs font-semibold text-slate-900">
             이어서 읽기
           </div>
         </div>

@@ -3,6 +3,16 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+
+  /* 모바일에서 기본 글자 스케일 조정 */
+  font-size: 0.875rem;
+}
+
+/* md 이상에서 기본 스케일 복구 */
+@media (min-width: 760.5px) {
+  :root {
+    font-size: 1rem;
+  }
 }
 
 @theme inline {
@@ -43,7 +53,6 @@ body {
   background-clip: padding-box;
 }
 
-/* hover 시만 조금 진하게 */
 ::-webkit-scrollbar-thumb:hover {
   background-color: rgba(0, 0, 0, 0.28);
 }

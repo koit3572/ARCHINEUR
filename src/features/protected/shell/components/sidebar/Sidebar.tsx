@@ -1,3 +1,4 @@
+// src/features/protected/shell/(shell)/components/sidebar/Sidebar.tsx
 "use client";
 
 import { useCallback, useMemo } from "react";
@@ -21,6 +22,12 @@ function cx(...v: Array<string | false | null | undefined>) {
   return v.filter(Boolean).join(" ");
 }
 
+declare global {
+  interface Window {
+    __ARCHINEUR_NOTE_NEW_GUARD__?: (next: () => void) => void;
+  }
+}
+
 export default function Sidebar({
   mobileOpen,
   onCloseMobile,
@@ -38,29 +45,43 @@ export default function Sidebar({
 
   const showToc = isPostView || isNoteDetailView;
 
-  // ✅ /notes(목록)일 때만 notes 활성, /stream일 때만 stream 활성
-  // ✅ /notes/[noteId]에서는 둘 다 비활성(null)
-  // ✅ /notes/new 는 별도 create 카드가 활성 처리됨
   const active = useMemo<"notes" | "stream" | null>(() => {
     if (isStreamView) return "stream";
     if (isNotesList) return "notes";
     return null;
   }, [isStreamView, isNotesList]);
 
+  const guardedPush = useCallback(
+    (href: string) => {
+      onCloseMobile();
+
+      const guard =
+        typeof window !== "undefined"
+          ? window.__ARCHINEUR_NOTE_NEW_GUARD__
+          : undefined;
+
+      if (typeof guard === "function") {
+        guard(() => router.push(href));
+        return;
+      }
+
+      router.push(href);
+    },
+    [router, onCloseMobile],
+  );
+
   const goNotes = useCallback(() => {
-    onCloseMobile();
-    router.push("/notes");
-  }, [router, onCloseMobile]);
+    guardedPush("/notes");
+  }, [guardedPush]);
 
   const goStream = useCallback(() => {
-    onCloseMobile();
-    router.push("/workbench/stream");
-  }, [router, onCloseMobile]);
+    guardedPush("/workbench/stream");
+  }, [guardedPush]);
 
   const goCreateNote = useCallback(() => {
-    onCloseMobile();
-    router.push("/notes/new");
-  }, [router, onCloseMobile]);
+    if (isNotesCreate) return;
+    guardedPush("/notes/new");
+  }, [guardedPush, isNotesCreate]);
 
   const header = useMemo(() => {
     if (showToc) {
@@ -126,17 +147,25 @@ export default function Sidebar({
         <div className="flex-1 overflow-y-auto p-5">
           <ModeNav active={active} onGoNotes={goNotes} onGoStream={goStream} />
 
-          {/* ✅ 노트생성: /notes/new 일 때 검정 활성 */}
           <div className="mt-3">
             <button
               type="button"
-              onClick={goCreateNote}
+              onClick={(e) => {
+                if (createActive) {
+                  e.preventDefault();
+                  return;
+                }
+                goCreateNote();
+              }}
               aria-pressed={createActive}
+              aria-current={createActive ? "page" : undefined}
+              aria-disabled={createActive}
+              tabIndex={createActive ? -1 : 0}
               className={cx(
                 "w-full rounded-2xl border px-4 py-3 text-left transition",
                 "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
                 createActive
-                  ? "border-slate-900 bg-slate-900"
+                  ? "border-slate-900 bg-slate-900 cursor-default pointer-events-none"
                   : "border-slate-200 bg-white hover:bg-slate-50",
               )}
             >
@@ -155,7 +184,7 @@ export default function Sidebar({
                 <div className="min-w-0 flex-1">
                   <div
                     className={cx(
-                      "text-[13px] font-semibold",
+                      "text-sm font-semibold",
                       createActive ? "text-white" : "text-slate-900",
                     )}
                   >
@@ -163,7 +192,7 @@ export default function Sidebar({
                   </div>
                   <div
                     className={cx(
-                      "mt-0.5 truncate text-[12px]",
+                      "mt-0.5 truncate text-xs",
                       createActive ? "text-white/70" : "text-slate-500",
                     )}
                   >

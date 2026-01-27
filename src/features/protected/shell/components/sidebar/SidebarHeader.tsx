@@ -21,7 +21,7 @@ export default function SidebarHeader({
           tone === "toc" ? "ring-1 ring-slate-900/5" : "",
         )}
       >
-        {/* 얇은 상단 바 */}
+        {/* 상단 바 */}
         <div
           className={cx(
             "h-[3px] w-full",
@@ -30,11 +30,9 @@ export default function SidebarHeader({
         />
 
         <div className="px-4 py-4">
-          <div className="text-[13px] font-semibold text-slate-900">
-            {title}
-          </div>
+          <div className="text-sm font-semibold text-slate-900">{title}</div>
           {subtitle ? (
-            <div className="mt-1 text-[12px] text-slate-500">{subtitle}</div>
+            <div className="mt-1 text-xs text-slate-500">{subtitle}</div>
           ) : null}
         </div>
       </div>

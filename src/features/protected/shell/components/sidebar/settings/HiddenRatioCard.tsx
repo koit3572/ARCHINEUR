@@ -1,3 +1,4 @@
+// src/features/protected/shell/(shell)/components/sidebar/settings/HiddenRatioCard.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -15,7 +16,6 @@ export default function HiddenRatioCard({ disabled }: { disabled: boolean }) {
   const { hiddenPercent, setHiddenPercent, effectiveHiddenPercent } =
     useMarkdownTokenSettings();
 
-  // feed가 아니면 effectiveHiddenPercent는 0/100으로 고정될 수 있음
   const shownPercent = useMemo(() => {
     return Math.round(
       clampPercent(disabled ? effectiveHiddenPercent : hiddenPercent),
@@ -82,9 +82,7 @@ export default function HiddenRatioCard({ disabled }: { disabled: boolean }) {
   return (
     <div className="rounded-md border border-slate-200 bg-slate-50/60 px-4 py-2">
       <div className="flex items-center justify-between gap-3">
-        <div className="text-[12px] font-semibold text-slate-900">
-          빈칸 비율
-        </div>
+        <div className="text-xs font-semibold text-slate-900">빈칸 비율</div>
 
         <div className="flex items-center gap-1">
           <input
@@ -107,14 +105,14 @@ export default function HiddenRatioCard({ disabled }: { disabled: boolean }) {
               }
             }}
             className={cx(
-              "w-[64px] rounded-md border px-2 py-1 text-right text-[12px] font-semibold bg-white",
+              "w-[4.5rem] rounded-md border px-2 py-1 text-right text-xs font-semibold bg-white",
               disabled
                 ? "border-slate-200 text-slate-500 opacity-70 cursor-not-allowed"
                 : "border-slate-200 text-slate-800 focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-slate-200",
             )}
             aria-label="빈칸 비율 입력"
           />
-          <span className="text-[12px] font-semibold text-slate-700">%</span>
+          <span className="text-xs font-semibold text-slate-700">%</span>
         </div>
       </div>
 
@@ -154,7 +152,7 @@ export default function HiddenRatioCard({ disabled }: { disabled: boolean }) {
             "absolute top-1/2 -translate-y-1/2",
             disabled ? "opacity-70" : "opacity-100",
           )}
-          style={{ left: `calc(${shownPercent}% - 8px)` }}
+          style={{ left: `calc(${shownPercent}% - 0.5rem)` }}
         >
           <div
             className={cx(
@@ -169,7 +167,7 @@ export default function HiddenRatioCard({ disabled }: { disabled: boolean }) {
         </div>
       </div>
 
-      <div className="mt-2 text-[12px] leading-snug text-slate-600">
+      <div className="mt-2 text-xs leading-snug text-slate-600">
         공개 토큰은 일반 텍스트, 비공개 토큰은 빈칸/입력.
         {disabled && (
           <span className="ml-1 text-slate-500">

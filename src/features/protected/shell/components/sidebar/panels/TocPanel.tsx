@@ -169,7 +169,7 @@ export default function TocPanel({ onNavigate }: { onNavigate?: () => void }) {
   const body = (() => {
     if (!note) {
       return (
-        <div className="px-4 py-3 text-[12px] text-slate-600">
+        <div className="px-4 py-3 text-xs text-slate-600">
           노트를 찾을 수 없어요.
         </div>
       );
@@ -177,7 +177,7 @@ export default function TocPanel({ onNavigate }: { onNavigate?: () => void }) {
 
     if (toc.length === 0) {
       return (
-        <div className="px-4 py-3 text-[12px] text-slate-600">
+        <div className="px-4 py-3 text-xs text-slate-600">
           # / ## / ### 제목이 없어요.
         </div>
       );
@@ -211,7 +211,7 @@ export default function TocPanel({ onNavigate }: { onNavigate?: () => void }) {
                       : "bg-slate-300",
                 )}
               />
-              <span className="min-w-0 line-clamp-1 text-[12px] text-slate-900">
+              <span className="min-w-0 line-clamp-1 text-xs text-slate-900">
                 {it.text}
               </span>
             </div>
@@ -223,20 +223,20 @@ export default function TocPanel({ onNavigate }: { onNavigate?: () => void }) {
 
   return (
     <section className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
-      {/* ✅ 헤더(목차 + 노트제목 + 카운트) */}
+      {/* 헤더(목차 + 노트제목 + 카운트) */}
       <div className="px-4 py-3 border-b border-slate-200">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-[13px] font-semibold text-slate-900">목차</div>
-          <div className="text-[11px] text-slate-500">
+          <div className="text-sm font-semibold text-slate-900">목차</div>
+          <div className="text-xs text-slate-500">
             {note ? toc.length : "—"}
           </div>
         </div>
-        <div className="mt-1 truncate text-[12px] text-slate-500">
+        <div className="mt-1 truncate text-xs text-slate-500">
           {note?.title ?? "Note"}
         </div>
       </div>
 
-      {/* ✅ 본문(상태/리스트) */}
+      {/* 본문(상태/리스트) */}
       {body}
     </section>
   );

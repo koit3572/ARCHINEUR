@@ -10,14 +10,14 @@ export default function NoteHeaderCard({ title }: { title: string }) {
 
       <div className="bg-gradient-to-b from-white to-slate-50/60 px-4 py-5 sm:px-8 sm:py-7">
         <div className="flex items-center justify-between gap-3">
-          <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-[12px] font-semibold text-slate-700 shadow-sm">
+          <span className="inline-flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-700 shadow-sm">
             <FiFileText className="h-3.5 w-3.5 text-slate-400" />
             정리노트
           </span>
           <div className="shrink-0" />
         </div>
 
-        <h1 className="mt-4 text-[24px] sm:text-[30px] lg:text-[34px] font-semibold tracking-tight text-slate-900">
+        <h1 className="mt-4 text-2xl sm:text-3xl lg:text-4xl font-semibold tracking-tight text-slate-900">
           {title}
         </h1>
 

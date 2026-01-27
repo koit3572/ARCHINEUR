@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { FiLogOut } from "react-icons/fi";
-import { supabase } from "@/lib/supabase/client";
+import { createClient } from "@/lib/supabase/client";
 
 export default function LogoutButton() {
   const router = useRouter();
@@ -12,6 +12,9 @@ export default function LogoutButton() {
   const logout = async () => {
     if (loading) return;
     setLoading(true);
+
+    const supabase = createClient();
+
     try {
       await supabase.auth.signOut();
       router.replace("/");
@@ -23,6 +26,7 @@ export default function LogoutButton() {
   return (
     <div className="border-t border-slate-200/70 p-5">
       <button
+        type="button"
         onClick={logout}
         disabled={loading}
         className={[

@@ -1,9 +1,14 @@
+// src/features/protected/shell/workbench/stream/components/StreamFeedView.tsx
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+
 import { useInfiniteFeed } from "../hooks/useInfiniteFeed";
 import { db, useTable, type RootRow, type FolderRow } from "@/lib/data";
 import MarkdownRenderer from "./markdown/MarkdownRenderer";
+import EmptyStreamFeedCta from "./EmptyStreamFeedCta";
+import { useMarkdownTokenSettings } from "@/features/protected/shell/workbench/stream/lib/MarkdownTokenSettings";
 
 function InterCardDivider() {
   return (
@@ -18,8 +23,12 @@ function InterCardDivider() {
   );
 }
 
-export default function ScreamFeedView() {
+export default function StreamFeedView() {
+  const router = useRouter();
+  const { effectiveHiddenPercent } = useMarkdownTokenSettings();
+
   const [ready, setReady] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const bootedRef = useRef(false);
 
   useEffect(() => {
@@ -66,11 +75,19 @@ export default function ScreamFeedView() {
 
     if (items.length > 0) {
       bootedRef.current = true;
+      setInitialLoadDone(true);
       return;
     }
 
     bootedRef.current = true;
-    loadMore(3);
+
+    Promise.resolve(loadMore(3))
+      .finally(() => {
+        setInitialLoadDone(true);
+      })
+      .catch(() => {
+        setInitialLoadDone(true);
+      });
   }, [ready, items.length, loadMore]);
 
   useEffect(() => {
@@ -101,22 +118,38 @@ export default function ScreamFeedView() {
     return () => observer.disconnect();
   }, [ready, loadMore]);
 
+  const showEmpty = ready && initialLoadDone && items.length === 0;
+
+  if (showEmpty) {
+    const NOTE_CREATE_PATH = "/notes/new";
+    const NOTE_LIST_PATH = "/notes";
+
+    return (
+      <div className="w-full">
+        <EmptyStreamFeedCta
+          onCreateNote={() => router.push(NOTE_CREATE_PATH)}
+          onGoNotes={() => router.push(NOTE_LIST_PATH)}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="w-full">
       <section className="space-y-0">
         {items.map((item, idx) => (
           <div key={item.instanceId}>
-            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_16px_44px_rgba(15,23,42,0.06)]">
+            <article className="overflow-hidden rounded-lg border border-slate-200 bg-white shadow-[0_1rem_40.25rem_rgba(15,23,42,0.06)]">
               {/* ✅ md → lg 로 올려서 “중간폭”에서 찌그러짐 방지 */}
               <div className="grid grid-cols-1 lg:grid-cols-[180px_minmax(0,1fr)]">
                 {/* meta rail */}
                 <div className="border-b border-slate-200 bg-slate-50/60 px-4 py-4 lg:border-b-0 lg:border-r">
-                  <div className="truncate text-[11px] font-medium tracking-wide text-slate-400">
+                  <div className="truncate text-xs font-medium tracking-wide text-slate-400">
                     {pathMap(item.problem.folder_id)}
                   </div>
 
                   <div
-                    className="mt-2 text-[14px] font-semibold leading-snug tracking-[-0.01em] text-slate-900"
+                    className="mt-2 text-sm font-semibold leading-snug tracking-[-0.01em] text-slate-900"
                     title={item.problem.title}
                     style={{
                       display: "-webkit-box",
@@ -128,7 +161,7 @@ export default function ScreamFeedView() {
                     {item.problem.title}
                   </div>
 
-                  <div className="mt-4 text-[12px] leading-snug text-slate-500">
+                  <div className="mt-4 text-xs leading-snug text-slate-500">
                     Scream · Feed
                   </div>
                 </div>
@@ -137,6 +170,7 @@ export default function ScreamFeedView() {
                 <div className="min-w-0 px-5 py-5">
                   <MarkdownRenderer
                     tokenMode="input"
+                    hiddenPercentOverride={effectiveHiddenPercent}
                     markdown={item.problem.markdown}
                   />
                 </div>

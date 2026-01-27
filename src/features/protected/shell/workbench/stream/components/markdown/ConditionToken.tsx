@@ -26,7 +26,7 @@ function measureChUnits(text: string) {
   let units = 0;
   for (const ch of text) {
     if (ch === " ") {
-      units += 1; // 공백도 1로 (너무 줄면 보기 안좋아서)
+      units += 1;
       continue;
     }
     const cp = ch.codePointAt(0);
@@ -46,8 +46,7 @@ export default function ConditionToken({ answer, mode }: Props) {
     // 너무 짧으면 못생김 / 너무 길면 폭발
     const ch = Math.min(Math.max(base, 4), 48);
 
-    // ✅ 아이콘/우측 패딩(pr-10=2.5rem) + 좌측 패딩(px-3=0.75rem) + 버퍼(0.5rem)
-    // Tailwind preflight는 border-box라 width에 padding 포함됨.
+    // ✅ 아이콘/우측 패딩(pr-10) + 좌측 패딩(px-3) + 버퍼
     const extra = "3rem";
 
     return {
@@ -76,8 +75,8 @@ export default function ConditionToken({ answer, mode }: Props) {
           value === ""
             ? "border-slate-200"
             : correct
-            ? "border-emerald-400 bg-emerald-50/60"
-            : "border-rose-400 bg-rose-50/60",
+              ? "border-emerald-400 bg-emerald-50/60"
+              : "border-rose-400 bg-rose-50/60",
         ].join(" ")}
       />
 
@@ -85,14 +84,14 @@ export default function ConditionToken({ answer, mode }: Props) {
       <button
         type="button"
         onClick={() => setShow((v) => !v)}
-        className="absolute right-1.5 top-1/2 -translate-y-1/2 inline-flex h-7 w-7 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
+        className="absolute right-1.5 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-md text-slate-500 hover:bg-slate-100"
         aria-label={show ? "hide answer" : "show answer"}
         onMouseDown={(e) => e.preventDefault()}
       >
         {show ? (
-          <FiEyeOff className="h-[15px] w-[15px]" />
+          <FiEyeOff className="h-4 w-4" />
         ) : (
-          <FiEye className="h-[15px] w-[15px]" />
+          <FiEye className="h-4 w-4" />
         )}
       </button>
 
@@ -100,16 +99,16 @@ export default function ConditionToken({ answer, mode }: Props) {
       {show && (
         <span
           style={{ minWidth: widthStyle.width }}
-          className="
-            absolute left-0 top-full z-20 mt-1
-            max-w-[min(520px,80vw)]
-            rounded-md border border-slate-200
-            bg-white/95 px-2.5 py-1.5
-            text-[12px] leading-snug text-slate-700
-            shadow-[0_12px_32px_rgba(15,23,42,0.10)]
-            backdrop-blur
-            whitespace-pre-wrap
-          "
+          className={[
+            "absolute left-0 top-full z-20 mt-1",
+            "max-w-[min(820px,80vw)]",
+            "rounded-md border border-slate-200",
+            "bg-white/95 px-2.5 py-1.5",
+            "text-xs leading-snug text-slate-700",
+            "shadow-[0_12px_30px_rgba(15,23,42,0.10)]",
+            "backdrop-blur",
+            "whitespace-pre-wrap",
+          ].join(" ")}
         >
           {answer}
         </span>

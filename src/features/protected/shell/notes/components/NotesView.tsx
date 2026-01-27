@@ -5,25 +5,33 @@ import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
-  FiChevronDown,
-  FiChevronUp,
   FiSearch,
   FiStar,
   FiX,
   FiClock,
-  FiTrash2,
   FiFolder,
   FiFileText,
-  FiMoreVertical,
+  FiPlus,
+  FiArrowRight,
 } from "react-icons/fi";
 
 import {
   db,
   useDB,
+  useTable,
   type RootRow,
   type FolderRow,
   type NoteRow,
 } from "@/lib/data";
+
+// ✅ 모바일/PC 모두 폴더구조는 FolderPickerPanel로 통일
+import FolderPickerPanel from "@/features/protected/shell/notes/new/components/FolderPickerPanel";
+
+// ✅ 좌측 검색/활동 패널 컴포넌트
+import SearchActivityPanel from "./NotesView/SearchActivityPanel";
+
+// ✅ 기존 프로젝트에 있는 삭제 모달 컴포넌트
+import DeleteConfirmModal from "./DeleteConfirmModal";
 
 type TreeKind = "root" | "folder" | "note";
 
@@ -70,26 +78,6 @@ function collectSearchHits(node: TreeNode, qLower: string, out: TreeNode[]) {
   if (!qLower) return;
   if (node.name.toLowerCase().includes(qLower)) out.push(node);
   for (const c of node.children ?? []) collectSearchHits(c, qLower, out);
-}
-
-function highlight(text: string, q: string) {
-  const qq = q.trim();
-  if (!qq) return text;
-
-  const idx = text.toLowerCase().indexOf(qq.toLowerCase());
-  if (idx < 0) return text;
-
-  const a = text.slice(0, idx);
-  const b = text.slice(idx, idx + qq.length);
-  const c = text.slice(idx + qq.length);
-
-  return (
-    <>
-      {a}
-      <mark className="rounded-sm bg-amber-200/70 px-1 py-[1px]">{b}</mark>
-      {c}
-    </>
-  );
 }
 
 function collectAllIds(node: TreeNode, out: string[]) {
@@ -145,7 +133,7 @@ function buildRootSubtree(
     }
   }
 
-  // attach notes
+  // attach notes (folder_id 있는 것만)
   const noteList = (notes ?? [])
     .filter((n) => !!n && String((n as any).folder_id))
     .slice()
@@ -168,7 +156,7 @@ function buildRootSubtree(
     });
   }
 
-  // ✅ sort: folder 먼저(폴더는 order 우선), 그 다음 note
+  // sort: folder 먼저(폴더는 order 우선), 그 다음 note
   const sortTree = (node: TreeNode) => {
     const kids = node.children ?? [];
     if (kids.length === 0) return;
@@ -221,104 +209,49 @@ function buildTreesFromDB(
   return rootList.map((r) => buildRootSubtree(r, folders, notes));
 }
 
-function DeleteConfirmModal({
-  open,
-  title,
-  description,
-  confirmText = "삭제",
-  cancelText = "취소",
-  onConfirm,
-  onCancel,
-}: {
-  open: boolean;
-  title: string;
-  description: string;
-  confirmText?: string;
-  cancelText?: string;
-  onConfirm: () => void;
-  onCancel: () => void;
-}) {
-  if (!open) return null;
+function collectDefaultOpenIds(node: TreeNode, out: string[]) {
+  if (node.kind !== "note") out.push(node.id);
+  for (const c of node.children ?? []) collectDefaultOpenIds(c, out);
+}
 
+/** ✅ 폴더 구조가 비어있을 때(루트만 있고 children 없음) 생성 유도 */
+function EmptyNotesTreeCta({ onCreateNote }: { onCreateNote: () => void }) {
   return (
-    <div className="fixed inset-0 z-50">
-      <div
-        className="absolute inset-0 bg-black/40"
-        onClick={onCancel}
-        aria-hidden
-      />
-      <div className="absolute inset-0 flex items-center justify-center px-6">
-        <div className="w-full max-w-sm rounded-2xl border border-slate-200 bg-white shadow-lg">
-          <div className="px-5 py-4">
-            <div className="text-[14px] font-semibold text-slate-900">
-              {title}
-            </div>
-            <div className="mt-2 text-[12px] leading-5 text-slate-600">
-              {description}
-            </div>
-          </div>
+    <div className="flex h-full min-h-0 items-center justify-center px-6 py-10">
+      <div className="w-full max-w-sm text-center">
+        <div className="mx-auto inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-100">
+          <FiFolder className="h-5 w-5 text-slate-600" />
+        </div>
 
-          <div className="flex items-center justify-end gap-2 border-t border-slate-200 px-5 py-3">
-            <button
-              type="button"
-              onClick={onCancel}
-              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-[12px] font-semibold text-slate-700 hover:bg-slate-50"
-            >
-              {cancelText}
-            </button>
-            <button
-              type="button"
-              onClick={onConfirm}
-              className="rounded-lg bg-rose-600 px-3 py-2 text-[12px] font-semibold text-white hover:bg-rose-700"
-            >
-              {confirmText}
-            </button>
-          </div>
+        <div className="mt-4 text-base font-semibold text-slate-900">
+          폴더 구조가 비어있어요
+        </div>
+        <div className="mt-2 text-xs leading-snug text-slate-600">
+          노트를 하나 만들면 폴더/파일이 여기 자동으로 채워져요.
+        </div>
+
+        <button
+          type="button"
+          onClick={onCreateNote}
+          className="mt-4 inline-flex items-center justify-center gap-2 rounded-xl bg-slate-900 px-4 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-slate-800 active:bg-slate-900"
+        >
+          <FiPlus className="h-4 w-4" />
+          노트 생성하기
+          <FiArrowRight className="h-4 w-4 opacity-90" />
+        </button>
+
+        <div className="mt-3 text-xs text-slate-500">
+          바로 생성 페이지로 이동합니다.
         </div>
       </div>
     </div>
   );
 }
 
-function collectDefaultOpenIds(node: TreeNode, out: string[]) {
-  if (node.kind !== "note") out.push(node.id);
-  for (const c of node.children ?? []) collectDefaultOpenIds(c, out);
-}
-
-const FAVORITES_KEY = "practice:favoriteNoteIds";
-
-function readFavoriteIds(): Set<string> {
-  if (typeof window === "undefined") return new Set();
-  const raw = window.localStorage.getItem(FAVORITES_KEY);
-  if (!raw) return new Set();
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed))
-      return new Set(parsed.map(String).filter(Boolean));
-    return new Set();
-  } catch {
-    if (raw.includes(",")) {
-      return new Set(
-        raw
-          .split(",")
-          .map((v) => v.trim())
-          .filter(Boolean),
-      );
-    }
-    return new Set();
-  }
-}
-
-function writeFavoriteIds(ids: Set<string>) {
-  if (typeof window === "undefined") return;
-  window.localStorage.setItem(FAVORITES_KEY, JSON.stringify(Array.from(ids)));
-}
-
 export default function NotesView() {
   const router = useRouter();
 
-  // ✅ 브라우저(바디) 스크롤 완전 차단 (NotesView에서만)
+  // ✅ 브라우저(바디) 스크롤 차단
   useEffect(() => {
     const html = document.documentElement;
     const body = document.body;
@@ -336,10 +269,31 @@ export default function NotesView() {
   }, []);
 
   useEffect(() => {
-    db.ensure();
+    (db as any)?.ensure?.();
   }, []);
 
-  const { roots, folders, notes } = useDB();
+  const dbState = useDB() as any;
+
+  const roots: RootRow[] = Array.isArray(dbState?.roots)
+    ? dbState.roots
+    : Array.isArray(dbState?.data?.roots)
+      ? dbState.data.roots
+      : [];
+
+  const folders: FolderRow[] = Array.isArray(dbState?.folders)
+    ? dbState.folders
+    : Array.isArray(dbState?.data?.folders)
+      ? dbState.data.folders
+      : [];
+
+  const notes: NoteRow[] = Array.isArray(dbState?.notes)
+    ? dbState.notes
+    : Array.isArray(dbState?.data?.notes)
+      ? dbState.data.notes
+      : [];
+
+  const rootsRaw = roots;
+  const foldersRaw = folders;
 
   const trees = useMemo(() => {
     return buildTreesFromDB(
@@ -351,7 +305,12 @@ export default function NotesView() {
 
   const { parent, nodeById } = useMemo(() => buildIndex(trees), [trees]);
 
-  // ====== search (IME 안정화) ======
+  const treeEmpty = useMemo(() => {
+    if (!trees.length) return true;
+    return !trees.some((t) => (t.children?.length ?? 0) > 0);
+  }, [trees]);
+
+  // ===== search (IME 안정화) =====
   const [query, setQuery] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [isComposing, setIsComposing] = useState(false);
@@ -366,29 +325,18 @@ export default function NotesView() {
   const [selectedId, setSelectedId] = useState<string>("");
   const [openIds, setOpenIds] = useState<Set<string>>(() => new Set());
   const [recent, setRecent] = useState<RecentEntry[]>([]);
-  const [favoriteIds, setFavoriteIds] = useState<Set<string>>(() => new Set());
 
   // ✅ 모바일: 폴더/최근/즐겨찾기 모드 토글
   const [mobileMode, setMobileMode] = useState<"tree" | "recent" | "favorite">(
     "tree",
   );
 
-  // ✅ PC 보조패널 탭(기존 유지)
-  const [desktopTab, setDesktopTab] = useState<"recent" | "favorite">("recent");
-
   const [deleteModalOpen, setDeleteModalOpen] = useState(false);
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
 
-  // ✅ "브라우저 스크롤" 대신, 이 컴포넌트가 차지할 실제 높이를 계산해서 고정
+  // ✅ 높이 고정
   const hostRef = useRef<HTMLDivElement | null>(null);
   const [hostHeight, setHostHeight] = useState<number>(0);
-
-  // ✅ (중요) 세로 … 메뉴 상태: 딱 1번만 선언
-  const [menuOpenId, setMenuOpenId] = useState<string | null>(null);
-  const menuRootRef = useRef<HTMLDivElement | null>(null);
-
-  // ✅ 모바일 트리 스크롤 컨테이너 ref
-  const mobileTreeScrollRef = useRef<HTMLDivElement | null>(null);
 
   useLayoutEffect(() => {
     const calc = () => {
@@ -417,7 +365,78 @@ export default function NotesView() {
     };
   }, []);
 
-  // ✅ 최초 1회: open / selected / recent / favorites
+  // =========================================================
+  // ✅ Favorites (테이블명: FolderTreePanel과 동일하게)
+  //   - root: user_root_favorites(root_id)
+  //   - folder: user_folder_favorites(folder_id)
+  //   - note: note_favorites(note_id)
+  // =========================================================
+  const rootFavRows = useTable("user_root_favorites") as any[];
+  const folderFavRows = useTable("user_folder_favorites") as any[];
+  const noteFavRows = useTable("note_favorites") as any[];
+
+  const favoriteRootIds = useMemo(() => {
+    return new Set(
+      (rootFavRows ?? []).map((r) => String(r?.root_id ?? "")).filter(Boolean),
+    );
+  }, [rootFavRows]);
+
+  const favoriteFolderIds = useMemo(() => {
+    return new Set(
+      (folderFavRows ?? [])
+        .map((r) => String(r?.folder_id ?? ""))
+        .filter(Boolean),
+    );
+  }, [folderFavRows]);
+
+  const favoriteNoteIds = useMemo(() => {
+    return new Set(
+      (noteFavRows ?? []).map((r) => String(r?.note_id ?? "")).filter(Boolean),
+    );
+  }, [noteFavRows]);
+
+  // ✅ toggle (root/folder/note)
+  const favBusyRef = useRef<Set<string>>(new Set());
+  const toggleAnyFavorite = (kind: TreeKind, id: string) => {
+    const key = `${kind}:${id}`;
+    if (favBusyRef.current.has(key)) return;
+    favBusyRef.current.add(key);
+
+    const run = async () => {
+      try {
+        if (kind === "note") {
+          const fn = (db as any)?.toggleFavorite;
+          if (typeof fn !== "function") return;
+          await fn(id);
+          return;
+        }
+        if (kind === "folder") {
+          const fn = (db as any)?.toggleFolderFavorite;
+          if (typeof fn !== "function") return;
+          await fn(id);
+          return;
+        }
+        if (kind === "root") {
+          const fn = (db as any)?.toggleRootFavorite;
+          if (typeof fn !== "function") return;
+          await fn(id);
+          return;
+        }
+      } catch (e) {
+        console.error("[NotesView] toggle favorite failed:", e);
+      } finally {
+        try {
+          await (db as any)?.refresh?.();
+        } catch {}
+      }
+    };
+
+    void Promise.resolve(run()).finally(() => {
+      favBusyRef.current.delete(key);
+    });
+  };
+
+  // ✅ 최초 1회: open / selected / recent
   useEffect(() => {
     if (bootRef.current) return;
 
@@ -432,66 +451,27 @@ export default function NotesView() {
     setSelectedId(firstRootId);
 
     setRecent(firstRootId ? [{ id: firstRootId, ts: Date.now() }] : []);
-    setFavoriteIds(readFavoriteIds());
 
     bootRef.current = true;
   }, [roots, trees]);
 
-  // ✅ 데이터 변경 시: 삭제된 id 정리 (삭제 후 state 방어)
+  // ✅ 데이터 변경 시: 삭제된 id 정리
   useEffect(() => {
     if (!bootRef.current) return;
 
     setOpenIds((prev) => {
       const next = new Set<string>();
       for (const id of prev) if (nodeById.has(id)) next.add(id);
-      // 남아있는 루트들은 항상 열림 유지
       for (const t of trees) next.add(t.id);
       return next;
     });
 
     setRecent((prev) => prev.filter((r) => nodeById.has(r.id)));
 
-    setFavoriteIds((prev) => {
-      const next = new Set<string>();
-      for (const id of prev) if (nodeById.has(id)) next.add(id);
-      writeFavoriteIds(next);
-      return next;
-    });
-
     if (!selectedId || !nodeById.has(selectedId)) {
       setSelectedId(trees[0]?.id ?? "");
     }
   }, [nodeById, selectedId, trees]);
-
-  // ✅ storage sync
-  useEffect(() => {
-    const onStorage = (e: StorageEvent) => {
-      if (e.key !== FAVORITES_KEY) return;
-      setFavoriteIds(readFavoriteIds());
-    };
-    window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
-  }, []);
-
-  // ✅ 메뉴 바깥 클릭하면 닫기
-  useEffect(() => {
-    if (!menuOpenId) return;
-
-    const onDown = (e: MouseEvent | TouchEvent) => {
-      const t = e.target as Node | null;
-      if (!t) return;
-      const root = menuRootRef.current;
-      if (root && root.contains(t)) return;
-      setMenuOpenId(null);
-    };
-
-    document.addEventListener("mousedown", onDown);
-    document.addEventListener("touchstart", onDown, { passive: true });
-    return () => {
-      document.removeEventListener("mousedown", onDown);
-      document.removeEventListener("touchstart", onDown);
-    };
-  }, [menuOpenId]);
 
   const qLower = searchQuery.trim().toLowerCase();
 
@@ -501,15 +481,6 @@ export default function NotesView() {
     for (const t of trees) collectSearchHits(t, qLower, hits);
     return hits.slice(0, 32);
   }, [trees, qLower]);
-
-  const selectedPath = useMemo(() => {
-    if (!selectedId) return "";
-    const ids = pathIds(parent, selectedId);
-    return ids
-      .map((id) => nodeById.get(id)?.name ?? "")
-      .filter(Boolean)
-      .join(" › ");
-  }, [parent, nodeById, selectedId]);
 
   // ✅ 최근 기록: "파일(note)만 표시"
   const recentItems = useMemo(() => {
@@ -528,31 +499,38 @@ export default function NotesView() {
     }>;
   }, [recent, nodeById]);
 
+  // ✅ 즐겨찾기: root/folder/note 모두 표시 (A안)
   const favoriteItems = useMemo(() => {
-    const ids = Array.from(favoriteIds);
-    return ids
-      .map((id) => {
-        const n = nodeById.get(id);
-        if (!n) return null;
-        return { id, label: n.name, kind: n.kind };
-      })
-      .filter(Boolean) as Array<{ id: string; label: string; kind: TreeKind }>;
-  }, [favoriteIds, nodeById]);
+    const out: Array<{ id: string; label: string; kind: TreeKind }> = [];
 
-  const clearQuery = () => {
-    setQuery("");
-    setSearchQuery("");
-  };
+    for (const id of Array.from(favoriteRootIds)) {
+      const n = nodeById.get(id);
+      if (!n || n.kind !== "root") continue;
+      out.push({ id, label: n.name, kind: "root" });
+    }
 
-  const toggleFavorite = (id: string) => {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      writeFavoriteIds(next);
-      return next;
+    for (const id of Array.from(favoriteFolderIds)) {
+      const n = nodeById.get(id);
+      if (!n || n.kind !== "folder") continue;
+      out.push({ id, label: n.name, kind: "folder" });
+    }
+
+    for (const id of Array.from(favoriteNoteIds)) {
+      const n = nodeById.get(id);
+      if (!n || n.kind !== "note") continue;
+      out.push({ id, label: n.name, kind: "note" });
+    }
+
+    const rank = (k: TreeKind) => (k === "root" ? 0 : k === "folder" ? 1 : 2);
+    out.sort((a, b) => {
+      const ra = rank(a.kind);
+      const rb = rank(b.kind);
+      if (ra !== rb) return ra - rb;
+      return a.label.localeCompare(b.label, "ko");
     });
-  };
+
+    return out;
+  }, [favoriteRootIds, favoriteFolderIds, favoriteNoteIds, nodeById]);
 
   const nodeParentPathText = (id: string) => {
     const ids = pathIds(parent, id);
@@ -578,7 +556,7 @@ export default function NotesView() {
     }
   };
 
-  // ✅ 루트/폴더/노트 모두 삭제 가능
+  // ✅ 삭제
   const canDelete = (id: string) => !!nodeById.get(id);
 
   const openDeleteModal = (id: string) => {
@@ -621,80 +599,46 @@ export default function NotesView() {
     return { title: "삭제할까요?", desc: "삭제할까요?" };
   }, [pendingDeleteNode]);
 
-  const confirmDelete = () => {
+  const confirmDelete = async () => {
     const id = pendingDeleteId;
     if (!id) return;
-    if (!canDelete(id)) return;
 
     const node = nodeById.get(id);
     if (!node) return;
 
-    const removedAll: string[] = [];
-    collectAllIds(node, removedAll);
+    try {
+      if (node.kind === "root") {
+        await db.deleteRoot(id);
+      } else if (node.kind === "folder") {
+        await db.deleteFolder(id);
+      } else {
+        await db.deleteNote(id);
+      }
 
-    const removedSet = new Set(removedAll);
-    const removedRootIds = new Set<string>();
-    const removedFolderIds = new Set<string>();
-    const removedNoteIds = new Set<string>();
+      await (db as any)?.refresh?.();
 
-    for (const rid of removedAll) {
-      const k = nodeById.get(rid)?.kind;
-      if (k === "root") removedRootIds.add(rid);
-      if (k === "folder") removedFolderIds.add(rid);
-      if (k === "note") removedNoteIds.add(rid);
+      const removedAll: string[] = [];
+      collectAllIds(node, removedAll);
+      const removedSet = new Set(removedAll);
+
+      setRecent((prev) => prev.filter((v) => !removedSet.has(v.id)));
+
+      setOpenIds((prev) => {
+        const next = new Set(prev);
+        for (const rid of removedSet) next.delete(rid);
+        for (const r of db.getTable("roots")) next.add(String((r as any).id));
+        return next;
+      });
+
+      const nextRoots = db.getTable("roots");
+      setSelectedId((prev) =>
+        removedSet.has(prev) ? (nextRoots[0]?.id ?? "") : prev,
+      );
+    } catch (e) {
+      console.error("[NotesView] delete failed:", e);
+    } finally {
+      closeDeleteModal();
     }
-
-    const curRoots = ((roots as any) ?? []) as RootRow[];
-    const curFolders = ((folders as any) ?? []) as FolderRow[];
-    const curNotes = ((notes as any) ?? []) as NoteRow[];
-
-    // ✅ 루트 삭제 시: roots 테이블에서도 제거
-    const nextRoots = curRoots.filter(
-      (r) => !removedRootIds.has(String((r as any).id)),
-    );
-
-    const nextFolders = curFolders.filter((f) => {
-      const fid = String((f as any).id);
-      const rid = String((f as any).root_id);
-      if (removedFolderIds.has(fid)) return false;
-      if (removedRootIds.has(rid)) return false;
-      return true;
-    });
-
-    const nextNotes = curNotes.filter((n) => {
-      const nid = String((n as any).id);
-      const fid = String((n as any).folder_id);
-      if (removedNoteIds.has(nid)) return false;
-      if (removedFolderIds.has(fid)) return false;
-      return true;
-    });
-
-    db.setTable("notes", nextNotes);
-    db.setTable("folders", nextFolders);
-    db.setTable("roots", nextRoots);
-
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      for (const rid of removedSet) next.delete(rid);
-      writeFavoriteIds(next);
-      return next;
-    });
-
-    setRecent((prev) => prev.filter((v) => !removedSet.has(v.id)));
-
-    setOpenIds((prev) => {
-      const next = new Set(prev);
-      for (const rid of removedSet) next.delete(rid);
-      for (const r of nextRoots) next.add(String((r as any).id));
-      return next;
-    });
-
-    const nextTreeRoots = buildTreesFromDB(nextRoots, nextFolders, nextNotes);
-    setSelectedId((prev) =>
-      removedSet.has(prev) ? (nextTreeRoots[0]?.id ?? "") : prev,
-    );
-
-    closeDeleteModal();
   };
 
   const openPath = (id: string) => {
@@ -706,6 +650,55 @@ export default function NotesView() {
     });
   };
 
+  // =========================================================
+  // ✅ (추가) PC/모바일 판별 + 트리 포커스(스크롤+강조)
+  // =========================================================
+  const isDesktop = () =>
+    typeof window !== "undefined" &&
+    !!window.matchMedia &&
+    window.matchMedia("(min-width: 1024px)").matches;
+
+  const focusTreeNode = (id: string) => {
+    const tryFind = () => {
+      // FolderPickerPanel 내부 마킹이 있으면 즉시 잡힘:
+      // - data-node-id="<id>"
+      // - id="tree-node-<id>"
+      // - data-tree-id="<id>"
+      // (없어도, 향후 패치 대비)
+      return (document.querySelector(`[data-node-id="${id}"]`) ||
+        document.getElementById(`tree-node-${id}`) ||
+        document.querySelector(`[data-tree-id="${id}"]`)) as HTMLElement | null;
+    };
+
+    const flash = (el: HTMLElement) => {
+      try {
+        el.animate(
+          [
+            { backgroundColor: "rgba(251, 191, 36, 0.22)" },
+            { backgroundColor: "rgba(251, 191, 36, 0.08)" },
+            { backgroundColor: "rgba(0,0,0,0)" },
+          ],
+          { duration: 650, easing: "ease-out" },
+        );
+      } catch {}
+    };
+
+    let tries = 0;
+    const tick = () => {
+      const el = tryFind();
+      if (el) {
+        el.scrollIntoView({ block: "center", behavior: "smooth" });
+        flash(el);
+        return;
+      }
+      tries += 1;
+      if (tries < 12) requestAnimationFrame(tick);
+    };
+
+    requestAnimationFrame(tick);
+  };
+
+  // ✅ A안: note는 라우팅, folder/root는 트리에서 열고 선택 + 강제 포커스
   const openById = (id: string, _behavior: "search" | "list" | "tree") => {
     const n = nodeById.get(id);
     if (!n) return;
@@ -725,646 +718,176 @@ export default function NotesView() {
     }
 
     setSelectedId(id);
+
+    // ✅ 모바일에서 즐겨찾기/최근에서 눌러도 "폴더(tree)"탭으로 전환
+    if (!isDesktop()) setMobileMode("tree");
+
+    // ✅ 우측 트리에서 해당 폴더/루트를 보이게 + 강조
+    focusTreeNode(id);
   };
 
-  const scrollTreeNodeIntoView = (id: string) => {
-    requestAnimationFrame(() => {
-      const container = mobileTreeScrollRef.current;
-      const el = container?.querySelector(
-        `[data-tree-node-id="${id}"]`,
-      ) as HTMLElement | null;
-      el?.scrollIntoView({ block: "center", inline: "nearest" });
-    });
-  };
+  // =========================================
+  // ✅ FolderPickerPanel selection bridge
+  // =========================================
+  const { selectedRootId, selectedFolderId } = useMemo(() => {
+    const n = selectedId ? nodeById.get(selectedId) : null;
+    if (!n)
+      return {
+        selectedRootId: null as string | null,
+        selectedFolderId: null as string | null,
+      };
 
-  const renderSearchBox = () => (
-    <div className="rounded-lg border border-slate-200 bg-white w-full">
-      <div className="flex items-center gap-2 px-3 py-2">
-        <FiSearch className="h-4 w-4 text-slate-400" />
-        <input
-          value={query}
-          onCompositionStart={() => setIsComposing(true)}
-          onCompositionEnd={(e) => {
-            setIsComposing(false);
-            const v = e.currentTarget.value;
-            setQuery(v);
-            setSearchQuery(v);
-          }}
-          onChange={(e) => {
-            const v = e.target.value;
-            setQuery(v);
+    const ids = pathIds(parent, n.id);
+    const rootId = ids[0] ?? null;
 
-            const ne = e.nativeEvent as any;
-            const composing = !!ne?.isComposing || isComposing;
-            if (!composing) setSearchQuery(v);
-          }}
-          placeholder="폴더/파일 검색…"
-          autoComplete="off"
-          autoCorrect="off"
-          autoCapitalize="none"
-          spellCheck={false}
-          className="w-full bg-transparent py-1 text-[13px] text-slate-900 placeholder:text-slate-400 focus:outline-none"
-        />
-        {query.trim().length > 0 && (
-          <button
-            type="button"
-            onClick={clearQuery}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
-            aria-label="clear"
-          >
-            <FiX className="h-4 w-4" />
-          </button>
-        )}
-      </div>
-    </div>
-  );
+    if (n.kind === "root") {
+      return { selectedRootId: n.id, selectedFolderId: null };
+    }
+    if (n.kind === "folder") {
+      return { selectedRootId: rootId, selectedFolderId: n.id };
+    }
 
-  const renderPickRow = ({
-    id,
-    label,
-    onPick,
-    highlightQuery,
-    rightText,
-  }: {
-    id: string;
-    label: string;
-    onPick: (id: string) => void;
-    highlightQuery?: string;
-    rightText?: string;
+    const folderId = ids.length >= 2 ? ids[ids.length - 2] : null;
+    return { selectedRootId: rootId, selectedFolderId: folderId };
+  }, [selectedId, nodeById, parent]);
+
+  const onPickLocation = (v: {
+    rootId: string | null;
+    folderId: string | null;
   }) => {
-    const node = nodeById.get(id);
-    const kind: TreeKind = node?.kind ?? "note";
-    const isFolderLike = kind === "folder" || kind === "root";
-    const path = nodeParentPathText(id);
-    const isFav = favoriteIds.has(id);
+    const id = v.folderId ?? v.rootId;
+    if (!id) return;
+    setSelectedId(id);
+    openPath(id);
 
-    return (
-      <div
-        key={id}
-        role="button"
-        tabIndex={0}
-        onClick={() => onPick(id)}
-        onKeyDown={(e) => {
-          if (e.key === "Enter" || e.key === " ") {
-            e.preventDefault();
-            onPick(id);
-          }
-        }}
-        className={cx(
-          "w-full rounded-lg px-3 py-2 text-left transition",
-          "bg-slate-50 hover:bg-slate-100",
-          "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
-        )}
-      >
-        <div className="flex items-center gap-2 w-full">
-          <div className="shrink-0">
-            {isFolderLike ? (
-              <FiFolder className="h-4 w-4 text-slate-400" />
-            ) : (
-              <FiFileText className="h-4 w-4 text-slate-400" />
-            )}
-          </div>
-
-          <div className="min-w-0 flex-1">
-            <div className="min-w-0 truncate text-[13px] font-semibold text-slate-900">
-              {highlightQuery ? highlight(label, highlightQuery) : label}
-              {path ? (
-                <span className="ml-1 text-[11px] font-medium text-slate-500">
-                  {path}
-                </span>
-              ) : null}
-            </div>
-          </div>
-
-          <button
-            type="button"
-            aria-pressed={isFav}
-            onClick={(e) => {
-              e.stopPropagation();
-              toggleFavorite(id);
-            }}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg hover:bg-white/70"
-            aria-label="favorite"
-          >
-            <FiStar
-              className={cx(
-                "h-4 w-4",
-                isFav ? "text-amber-500" : "text-slate-400",
-              )}
-              fill={isFav ? "currentColor" : "none"}
-            />
-          </button>
-
-          {rightText ? (
-            <div className="shrink-0 text-[11px] font-semibold text-slate-500">
-              {rightText}
-            </div>
-          ) : null}
-        </div>
-      </div>
-    );
+    // ✅ picker로 선택했을 때도 트리에서 보이게
+    focusTreeNode(id);
   };
 
-  const renderNode = (node: TreeNode, depth: number) => {
-    const kids = node.children ?? [];
-    const hasChildren = node.kind !== "note" && kids.length > 0;
-    const open = openIds.has(node.id);
-
-    const active = node.id === selectedId;
-    const isFav = favoriteIds.has(node.id);
-
-    const iconColor = active ? "text-white/80" : "text-slate-400";
-    const starColor = isFav
-      ? active
-        ? "text-amber-300"
-        : "text-amber-500"
-      : active
-        ? "text-white/60"
-        : "text-slate-400";
-
-    const showMenu = canDelete(node.id);
-
-    return (
-      <div key={node.id}>
-        <div
-          data-tree-node-id={node.id}
-          className={cx(
-            "flex items-center gap-2 px-3 py-2 transition",
-            active ? "bg-slate-900 text-white" : "hover:bg-slate-50",
-          )}
-          style={{ paddingLeft: 12 + depth * 16 }}
-        >
-          {hasChildren ? (
-            <button
-              type="button"
-              onClick={() =>
-                setOpenIds((prev) => {
-                  const next = new Set(prev);
-                  if (next.has(node.id)) next.delete(node.id);
-                  else next.add(node.id);
-                  return next;
-                })
-              }
-              className={cx(
-                "inline-flex h-8 w-8 items-center justify-center rounded-lg",
-                active ? "hover:bg-white/10" : "hover:bg-slate-100",
-              )}
-              aria-label="toggle"
-            >
-              {open ? (
-                <FiChevronUp
-                  className={cx(
-                    "h-4 w-4",
-                    active ? "text-white" : "text-slate-500",
-                  )}
-                />
-              ) : (
-                <FiChevronDown
-                  className={cx(
-                    "h-4 w-4",
-                    active ? "text-white" : "text-slate-500",
-                  )}
-                />
-              )}
-            </button>
-          ) : (
-            <div className="h-8 w-8" />
-          )}
-
-          <div className="shrink-0">
-            {node.kind === "note" ? (
-              <FiFileText className={cx("h-4 w-4", iconColor)} />
-            ) : (
-              <FiFolder className={cx("h-4 w-4", iconColor)} />
-            )}
-          </div>
-
-          {/* 행 클릭 = 이동(노트)/선택(폴더/루트) + 폴더는 토글 */}
-          <button
-            type="button"
-            onClick={() => {
-              if (node.kind === "note") {
-                openById(node.id, "tree");
-                return;
-              }
-
-              setSelectedId(node.id);
-              setRecent((prev) => {
-                const now = Date.now();
-                const next = [
-                  { id: node.id, ts: now },
-                  ...prev.filter((v) => v.id !== node.id),
-                ];
-                return next.slice(0, 8);
-              });
-
-              if (hasChildren) {
-                setOpenIds((prev) => {
-                  const next = new Set(prev);
-
-                  if (next.has(node.id)) {
-                    next.delete(node.id);
-                    return next;
-                  }
-
-                  const ids = pathIds(parent, node.id);
-                  for (const pid of ids) next.add(pid);
-                  return next;
-                });
-              }
-            }}
-            className="min-w-0 flex-1 text-left"
-          >
-            <div
-              className={cx(
-                "truncate text-[13px]",
-                node.kind !== "note" ? "font-semibold" : "font-medium",
-              )}
-            >
-              {node.name}
-            </div>
-
-            {node.kind !== "note" && (
-              <div
-                className={cx(
-                  "mt-0.5 text-[11px]",
-                  active ? "text-white/70" : "text-slate-500",
-                )}
-              >
-                하위 {kids.length}개
-              </div>
-            )}
-          </button>
-
-          <div className="flex items-center gap-1">
-            {/* 즐겨찾기 별은 유지 */}
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                toggleFavorite(node.id);
-              }}
-              className={cx(
-                "inline-flex h-8 w-6 items-center justify-center rounded-lg",
-                active ? "hover:bg-white/10" : "hover:bg-slate-100",
-              )}
-              aria-label="favorite"
-              title="즐겨찾기"
-            >
-              <FiStar
-                className={cx("h-4 w-4", starColor)}
-                fill={isFav ? "currentColor" : "none"}
-              />
-            </button>
-
-            {/* 휴지통은 세로 … 메뉴로 */}
-            {showMenu ? (
-              <div
-                className="relative"
-                ref={menuOpenId === node.id ? menuRootRef : undefined}
-              >
-                <button
-                  type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    setMenuOpenId((prev) =>
-                      prev === node.id ? null : node.id,
-                    );
-                  }}
-                  className={cx(
-                    "inline-flex h-8 w-6 items-center justify-center rounded-lg transition",
-                    active ? "hover:bg-white/10" : "hover:bg-slate-100",
-                  )}
-                  aria-label="more"
-                  title="편집"
-                >
-                  <FiMoreVertical
-                    className={cx(
-                      "h-4 w-4",
-                      active ? "text-white/80" : "text-slate-500",
-                    )}
-                  />
-                </button>
-
-                {menuOpenId === node.id ? (
-                  <div className="absolute right-0 z-50 mt-1 w-36 overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setMenuOpenId(null);
-                        openDeleteModal(node.id);
-                      }}
-                      className="flex w-full items-center justify-between px-3 py-2 text-left text-[12px] text-rose-600 hover:bg-rose-50"
-                    >
-                      <span className="inline-flex items-center gap-2">
-                        <FiTrash2 className="h-3.5 w-3.5" />
-                        {node.kind === "root"
-                          ? "루트 삭제"
-                          : node.kind === "folder"
-                            ? "폴더 삭제"
-                            : "파일 삭제"}
-                      </span>
-                      <span className="text-[10px] text-rose-400">DEL</span>
-                    </button>
-                  </div>
-                ) : null}
-              </div>
-            ) : null}
-          </div>
-        </div>
-
-        {hasChildren && open ? (
-          <div className="space-y-1">
-            {kids.map((c) => renderNode(c, depth + 1))}
-          </div>
-        ) : null}
-      </div>
-    );
+  const onCloseFolderPicker = () => {
+    // NotesView에서는 패널이 고정 노출이라 noop
   };
 
   const renderFolderPanel = () => {
     return (
-      <section className="rounded-lg border border-slate-200 bg-white flex flex-col min-h-0 overflow-hidden h-full">
-        <div className="flex items-start justify-between gap-3 border-b border-slate-200 px-4 py-3 shrink-0">
-          <div className="min-w-0">
-            <div className="text-[12px] font-semibold text-slate-900">
-              폴더 구조
-            </div>
-            <div className="mt-1 text-[12px] text-slate-500 truncate">
-              {selectedPath}
-            </div>
-          </div>
-        </div>
-
-        <div className="py-2 pb-4 flex-1 min-h-0 overflow-y-auto">
-          <div className="space-y-1">{trees.map((t) => renderNode(t, 0))}</div>
-        </div>
-      </section>
-    );
-  };
-
-  const PanelShell = ({
-    title,
-    icon,
-    children,
-  }: {
-    title: string;
-    icon: ReactNode;
-    children: ReactNode;
-  }) => {
-    return (
-      <section className="rounded-lg border border-slate-200 bg-white flex flex-col min-h-0 overflow-hidden h-full">
-        <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-3 shrink-0">
-          <div className="flex items-center gap-2">
-            {icon}
-            <div className="text-[12px] font-semibold text-slate-900">
-              {title}
-            </div>
-          </div>
-        </div>
-        <div className="p-3 flex-1 min-h-0 overflow-hidden">{children}</div>
-      </section>
-    );
-  };
-
-  /** ✅ PC: (리뉴얼 패널) but "왼쪽" 배치 (기존 유지) */
-  const renderDesktopSide = () => {
-    const TabBtn = ({
-      k,
-      label,
-      icon,
-    }: {
-      k: "recent" | "favorite";
-      label: string;
-      icon: ReactNode;
-    }) => {
-      const active = desktopTab === k;
-      return (
-        <button
-          type="button"
-          onClick={() => setDesktopTab(k)}
-          aria-pressed={active}
-          className={cx(
-            "h-9 flex-1 rounded-lg px-2 text-[12px] font-semibold transition",
-            "inline-flex items-center justify-center gap-2",
-            "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
-            active ? "bg-white text-slate-900 shadow-sm" : "text-slate-600",
-          )}
-        >
-          {icon}
-          {label}
-        </button>
-      );
-    };
-
-    const list = (() => {
-      if (qLower) {
-        return (
-          <div className="h-full min-h-0 overflow-y-auto pr-1 pb-4">
-            <div className="mb-2 flex items-center justify-between gap-2">
-              <div className="text-[11px] font-semibold text-slate-500">
-                검색 결과
-              </div>
-              <div className="text-[11px] text-slate-500">
-                {searchHits.length}
-              </div>
-            </div>
-
-            {searchHits.length === 0 ? (
-              <div className="rounded-lg border border-dashed border-slate-200 bg-white p-6 text-center">
-                <div className="text-[13px] font-semibold text-slate-900">
-                  결과 없음
-                </div>
-                <div className="mt-2 text-[12px] text-slate-500">
-                  다른 키워드로 검색해보세요.
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {searchHits.map((n) =>
-                  renderPickRow({
-                    id: n.id,
-                    label: n.name,
-                    onPick: (id) => openById(id, "search"),
-                    highlightQuery: searchQuery,
-                  }),
-                )}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      if (desktopTab === "recent") {
-        return (
-          <div className="h-full min-h-0 overflow-y-auto pr-1 pb-4">
-            {recentItems.length === 0 ? (
-              <div className="px-2 py-2 text-[12px] text-slate-500">
-                최근 선택 없음
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {recentItems.map((it) =>
-                  renderPickRow({
-                    id: it.id,
-                    label: it.label,
-                    onPick: (id) => openById(id, "list"),
-                    rightText: formatHHMM(it.ts),
-                  }),
-                )}
-              </div>
-            )}
-          </div>
-        );
-      }
-
-      return (
-        <div className="h-full min-h-0 overflow-y-auto pr-1 pb-4">
-          {favoriteItems.length === 0 ? (
-            <div className="px-2 py-2 text-[12px] text-slate-500">
-              즐겨찾기 없음
-            </div>
-          ) : (
-            <div className="space-y-1">
-              {favoriteItems.map((it) =>
-                renderPickRow({
-                  id: it.id,
-                  label: it.label,
-                  onPick: (id) => openById(id, "list"),
-                }),
-              )}
-            </div>
-          )}
-        </div>
-      );
-    })();
-
-    return (
-      <PanelShell
-        title="검색 / 활동"
-        icon={<FiSearch className="h-4 w-4 text-slate-500" />}
+      <section
+        className="rounded-lg border border-slate-200 bg-white flex flex-col min-h-0 overflow-hidden h-full"
+        data-notes-tree-panel="1"
       >
-        <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
-          <div className="shrink-0">{renderSearchBox()}</div>
-
-          <div className="shrink-0">
-            <div className="flex rounded-xl bg-slate-100 p-1">
-              <TabBtn
-                k="recent"
-                label="최근(파일)"
-                icon={<FiClock className="h-3.5 w-3.5" />}
-              />
-              <TabBtn
-                k="favorite"
-                label="즐겨찾기"
-                icon={<FiStar className="h-3.5 w-3.5" />}
-              />
-            </div>
-          </div>
-
-          <div className="flex-1 min-h-0 overflow-hidden">{list}</div>
-        </div>
-      </PanelShell>
+        {treeEmpty ? (
+          <EmptyNotesTreeCta onCreateNote={() => router.push("/notes/new")} />
+        ) : (
+          <FolderPickerPanel
+            mode="list"
+            roots={rootsRaw}
+            folders={foldersRaw}
+            selectedRootId={selectedRootId}
+            selectedFolderId={selectedFolderId}
+            onPick={onPickLocation}
+            onClose={onCloseFolderPicker}
+          />
+        )}
+      </section>
     );
   };
 
-  /** ✅ 모바일: 검색 결과 overlay (높이에 영향 X) */
-  const renderMobileSearchDropdown = () => {
-    if (!qLower) return null;
+  // =========================================================
+  // ✅ (추가) 모바일 즐겨찾기도 PC처럼: 아이콘 + 경로 + 우측 별
+  // =========================================================
+  const iconByKind = (k: TreeKind) => {
+    if (k === "root") return <FiFolder className="h-4 w-4 text-slate-600" />;
+    if (k === "folder") return <FiFolder className="h-4 w-4 text-slate-600" />;
+    return <FiFileText className="h-4 w-4 text-slate-600" />;
+  };
+
+  const isFav = (k: TreeKind, id: string) => {
+    if (k === "root") return favoriteRootIds.has(id);
+    if (k === "folder") return favoriteFolderIds.has(id);
+    return favoriteNoteIds.has(id);
+  };
+
+  const renderMobileListRow = (it: {
+    id: string;
+    label: string;
+    kind: TreeKind;
+  }) => {
+    const pathText = nodeParentPathText(it.id);
+    const fav = isFav(it.kind, it.id);
 
     return (
-      <div className="absolute left-0 right-0 top-full mt-2 z-50">
-        <div className="rounded-lg border border-slate-200 bg-white shadow-lg overflow-hidden">
-          <div className="flex items-center justify-between gap-2 border-b border-slate-200 px-4 py-2">
-            <div className="flex items-center gap-2">
-              <FiSearch className="h-3.5 w-3.5 text-slate-500" />
-              <div className="text-[12px] font-semibold text-slate-800">
-                검색 결과
-              </div>
-            </div>
-            <div className="text-[11px] text-slate-500">
-              {searchHits.length}
-            </div>
+      <div
+        key={`${it.kind}:${it.id}`}
+        role="button"
+        tabIndex={0}
+        onClick={() => openById(it.id, "list")}
+        className={cx(
+          "w-full rounded-xl px-3 py-2.5 text-left transition",
+          "bg-slate-50 hover:bg-slate-100",
+          "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
+        )}
+      >
+        <div className="flex items-center gap-3">
+          <div className="inline-flex h-9 w-9 items-center justify-center rounded-xl bg-white ring-1 ring-slate-200">
+            {iconByKind(it.kind)}
           </div>
 
-          <div className="border-b border-slate-200 px-4 py-2">
-            <div className="inline-flex max-w-full items-center gap-2 rounded-lg border border-slate-200 bg-slate-50 px-2 py-1 text-[11px] text-slate-700">
-              <span className="truncate">{searchQuery.trim()}</span>
-              <button
-                type="button"
-                onClick={clearQuery}
-                className="inline-flex h-5 w-5 items-center justify-center rounded hover:bg-slate-200/60"
-                aria-label="clear"
-              >
-                <FiX className="h-3 w-3" />
-              </button>
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold text-slate-900">
+              {it.label}
             </div>
+            {pathText ? (
+              <div className="mt-0.5 truncate text-[11px] font-medium text-slate-500">
+                {pathText}
+              </div>
+            ) : null}
           </div>
 
-          <div className="p-2 max-h-[52vh] overflow-y-auto pb-4">
-            {searchHits.length === 0 ? (
-              <div className="px-2 py-8 text-center">
-                <div className="text-[13px] font-semibold text-slate-900">
-                  결과 없음
-                </div>
-                <div className="mt-2 text-[12px] text-slate-500">
-                  다른 키워드로 검색해보세요.
-                </div>
-              </div>
-            ) : (
-              <div className="space-y-1">
-                {searchHits.map((n) =>
-                  renderPickRow({
-                    id: n.id,
-                    label: n.name,
-                    onPick: (id) => {
-                      openById(id, "search");
-                      clearQuery();
-                    },
-                    highlightQuery: searchQuery,
-                  }),
-                )}
-              </div>
-            )}
-          </div>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              toggleAnyFavorite(it.kind, it.id);
+            }}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl hover:bg-white"
+            aria-label="favorite"
+            title={fav ? "즐겨찾기 해제" : "즐겨찾기"}
+          >
+            <FiStar
+              className={cx(
+                "h-4 w-4",
+                fav ? "text-amber-500" : "text-slate-400",
+              )}
+              fill={fav ? "currentColor" : "none"}
+            />
+          </button>
         </div>
       </div>
     );
   };
 
-  const renderMobileSearchBackdrop = () => {
-    if (!qLower) return null;
-    return (
-      <button
-        type="button"
-        aria-label="close search results"
-        onClick={clearQuery}
-        className="fixed inset-0 z-20 bg-transparent"
-      />
-    );
-  };
-
+  // =========================
+  // ✅ 모바일 UI
+  // =========================
   const renderMobileBody = () => {
     if (mobileMode === "tree") {
       return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
-          <div className="shrink-0 border-b border-slate-200 px-4 py-3">
-            <div className="text-[12px] font-semibold text-slate-900">
-              폴더 구조
-            </div>
-            <div className="mt-1 truncate text-[12px] text-slate-500">
-              {selectedPath}
-            </div>
-          </div>
-
-          <div
-            ref={mobileTreeScrollRef}
-            className="flex-1 min-h-0 overflow-y-auto py-2 pb-4"
-          >
-            <div className="space-y-1">
-              {trees.map((t) => renderNode(t, 0))}
-            </div>
+          <div className="flex-1 min-h-0 overflow-hidden">
+            {treeEmpty ? (
+              <EmptyNotesTreeCta
+                onCreateNote={() => router.push("/notes/new")}
+              />
+            ) : (
+              <FolderPickerPanel
+                mode="list"
+                roots={rootsRaw}
+                folders={foldersRaw}
+                selectedRootId={selectedRootId}
+                selectedFolderId={selectedFolderId}
+                onPick={onPickLocation}
+                onClose={onCloseFolderPicker}
+              />
+            )}
           </div>
         </div>
       );
@@ -1374,7 +897,7 @@ export default function NotesView() {
       return (
         <div className="flex h-full min-h-0 flex-col overflow-hidden">
           <div className="shrink-0 border-b border-slate-200 px-4 py-3">
-            <div className="flex items-center gap-2 text-[12px] font-semibold text-slate-900">
+            <div className="flex items-center gap-2 text-xs font-semibold text-slate-900">
               <FiClock className="h-4 w-4 text-slate-500" />
               최근 선택 (파일만)
             </div>
@@ -1382,19 +905,35 @@ export default function NotesView() {
 
           <div className="flex-1 min-h-0 overflow-y-auto p-3 pb-4">
             {recentItems.length === 0 ? (
-              <div className="px-2 py-2 text-[12px] text-slate-500">
+              <div className="px-2 py-2 text-xs text-slate-500">
                 최근 선택 없음
               </div>
             ) : (
               <div className="space-y-1">
-                {recentItems.map((it) =>
-                  renderPickRow({
-                    id: it.id,
-                    label: it.label,
-                    onPick: (id) => openById(id, "list"),
-                    rightText: formatHHMM(it.ts),
-                  }),
-                )}
+                {recentItems.map((it) => (
+                  <div
+                    key={it.id}
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => openById(it.id, "list")}
+                    className={cx(
+                      "w-full rounded-lg px-3 py-2 text-left transition",
+                      "bg-slate-50 hover:bg-slate-100",
+                      "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
+                    )}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-slate-900">
+                          {it.label}
+                        </div>
+                      </div>
+                      <div className="shrink-0 text-xs font-semibold text-slate-500">
+                        {formatHHMM(it.ts)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -1406,7 +945,7 @@ export default function NotesView() {
     return (
       <div className="flex h-full min-h-0 flex-col overflow-hidden">
         <div className="shrink-0 border-b border-slate-200 px-4 py-3">
-          <div className="flex items-center gap-2 text-[12px] font-semibold text-slate-900">
+          <div className="flex items-center gap-2 text-xs font-semibold text-slate-900">
             <FiStar className="h-4 w-4 text-slate-500" />
             즐겨찾기
           </div>
@@ -1414,31 +953,12 @@ export default function NotesView() {
 
         <div className="flex-1 min-h-0 overflow-y-auto p-3 pb-4">
           {favoriteItems.length === 0 ? (
-            <div className="px-2 py-2 text-[12px] text-slate-500">
+            <div className="px-2 py-2 text-xs text-slate-500">
               즐겨찾기 없음
             </div>
           ) : (
             <div className="space-y-1">
-              {favoriteItems.map((it) =>
-                renderPickRow({
-                  id: it.id,
-                  label: it.label,
-                  onPick: (id) => {
-                    const n = nodeById.get(id);
-                    if (n?.kind === "folder" || n?.kind === "root") {
-                      openPath(id);
-                      setSelectedId(id);
-                      setMobileMode("tree");
-                      // 모드 전환 이후 보이도록 스크롤 강제
-                      requestAnimationFrame(() => {
-                        requestAnimationFrame(() => scrollTreeNodeIntoView(id));
-                      });
-                      return;
-                    }
-                    openById(id, "list");
-                  },
-                }),
-              )}
+              {favoriteItems.map((it) => renderMobileListRow(it))}
             </div>
           )}
         </div>
@@ -1462,11 +982,14 @@ export default function NotesView() {
           type="button"
           onClick={() => {
             setMobileMode(k);
-            if (qLower) clearQuery();
+            if (qLower) {
+              setQuery("");
+              setSearchQuery("");
+            }
           }}
           aria-pressed={active}
           className={cx(
-            "h-9 flex-1 rounded-lg px-2 text-[12px] font-semibold transition",
+            "h-9 flex-1 rounded-lg px-2 text-xs font-semibold transition",
             "inline-flex items-center justify-center gap-2",
             "focus:outline-none focus-visible:ring-2 focus-visible:ring-slate-900/20",
             active ? "bg-white text-slate-900 shadow-sm" : "text-slate-600",
@@ -1480,13 +1003,49 @@ export default function NotesView() {
 
     return (
       <div className="h-full min-h-0 overflow-hidden">
-        {renderMobileSearchBackdrop()}
-
         <section className="relative h-full min-h-0 overflow-hidden rounded-lg border border-slate-200 bg-white flex flex-col">
           <div className="relative z-40 shrink-0 border-b border-slate-200 px-4 py-3">
-            <div className="relative">
-              {renderSearchBox()}
-              {renderMobileSearchDropdown()}
+            <div className="rounded-lg border border-slate-200 bg-white w-full">
+              <div className="flex items-center gap-2 px-3 py-2">
+                <FiSearch className="h-4 w-4 text-slate-400" />
+                <input
+                  value={query}
+                  onCompositionStart={() => setIsComposing(true)}
+                  onCompositionEnd={(e) => {
+                    setIsComposing(false);
+                    const v = e.currentTarget.value;
+                    setQuery(v);
+                    setSearchQuery(v);
+                  }}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setQuery(v);
+
+                    const ne = e.nativeEvent as any;
+                    const composing = !!ne?.isComposing || isComposing;
+                    if (!composing) setSearchQuery(v);
+                  }}
+                  placeholder="폴더/파일 검색…"
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="none"
+                  spellCheck={false}
+                  className="w-full bg-transparent py-1 text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none"
+                />
+                {query.trim().length > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("");
+                      setSearchQuery("");
+                    }}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100"
+                    aria-label="clear"
+                  >
+                    <FiX className="h-4 w-4" />
+                  </button>
+                )}
+              </div>
             </div>
 
             <div className="mt-3 rounded-xl bg-slate-100 p-1 flex">
@@ -1518,6 +1077,65 @@ export default function NotesView() {
 
   return (
     <>
+      <div
+        ref={hostRef}
+        style={{ height: hostHeight || undefined }}
+        className="min-h-0 overflow-hidden pb-4"
+      >
+        <div className="h-full min-h-0 overflow-hidden">
+          {/* MOBILE */}
+          <div className="lg:hidden h-full min-h-0 overflow-hidden">
+            {renderMobile()}
+          </div>
+
+          {/* DESKTOP */}
+          <div
+            className={cx(
+              "hidden lg:grid",
+              "h-full min-h-0 overflow-hidden",
+              "lg:grid-cols-[320px_minmax(0,1fr)]",
+              "xl:grid-cols-[360px_minmax(0,1fr)]",
+              "lg:gap-6",
+              "lg:px-6",
+            )}
+          >
+            {/* LEFT: 검색/활동 */}
+            <aside className="min-h-0 overflow-hidden lg:h-full">
+              <SearchActivityPanel
+                query={query}
+                setQuery={setQuery}
+                searchQuery={searchQuery}
+                setSearchQuery={setSearchQuery}
+                isComposing={isComposing}
+                setIsComposing={setIsComposing}
+                qLower={qLower}
+                searchHits={searchHits}
+                recentItems={recentItems}
+                favoriteItems={favoriteItems}
+                favoriteRootIds={favoriteRootIds}
+                favoriteFolderIds={favoriteFolderIds}
+                favoriteNoteIds={favoriteNoteIds}
+                toggleAnyFavorite={toggleAnyFavorite}
+                getNodeKind={(id) => nodeById.get(id)?.kind ?? null}
+                getNodeParentPathText={nodeParentPathText}
+                openById={openById}
+                openPath={openPath}
+                setSelectedId={setSelectedId}
+                formatHHMM={formatHHMM}
+              />
+            </aside>
+
+            {/* MAIN: 폴더 구조 */}
+            <div className="min-h-0 overflow-hidden lg:h-full">
+              <section className="h-full min-h-0 overflow-hidden">
+                {renderFolderPanel()}
+              </section>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ✅ 삭제 모달 */}
       <DeleteConfirmModal
         open={deleteModalOpen}
         title={deleteModalText.title}
@@ -1525,38 +1143,6 @@ export default function NotesView() {
         onCancel={closeDeleteModal}
         onConfirm={confirmDelete}
       />
-
-      <div
-        ref={hostRef}
-        style={{ height: hostHeight || undefined }}
-        className="min-h-0 overflow-hidden pb-4"
-      >
-        <div className="h-full min-h-0 overflow-hidden">
-          <div className="lg:hidden h-full min-h-0 overflow-hidden">
-            {renderMobile()}
-          </div>
-
-          <div
-            className={cx(
-              "hidden lg:grid",
-              "h-full min-h-0 overflow-hidden",
-              "lg:grid-cols-[320px_32px_minmax(0,1fr)] lg:items-stretch lg:gap-0",
-            )}
-          >
-            <aside className="min-h-0 overflow-hidden lg:h-full lg:pr-1">
-              {renderDesktopSide()}
-            </aside>
-
-            <div className="hidden lg:flex justify-center lg:h-full">
-              <div className="h-full w-px bg-slate-200" />
-            </div>
-
-            <div className="min-h-0 overflow-hidden lg:h-full">
-              {renderFolderPanel()}
-            </div>
-          </div>
-        </div>
-      </div>
     </>
   );
 }

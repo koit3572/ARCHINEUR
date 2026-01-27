@@ -60,27 +60,23 @@ export default function FavoritesSection({
   }, [favoriteIds, noteId, notes, roots, folders]);
 
   return (
-    <section className="mt-6 rounded-lg border border-slate-200 bg-white shadow-sm overflow-hidden">
-      <div className="px-6 py-4 border-b border-slate-200">
+    <section className="mt-6 overflow-hidden rounded-lg border border-slate-200 bg-white shadow-sm">
+      <div className="border-b border-slate-200 px-6 py-4">
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2">
             <FiStar className="h-4 w-4 text-slate-500" />
-            <div className="text-[12px] font-semibold text-slate-900">
-              즐겨찾기
-            </div>
+            <div className="text-xs font-semibold text-slate-900">즐겨찾기</div>
           </div>
-          <div className="text-[11px] text-slate-500">
-            {favoriteNotes.length}
-          </div>
+          <div className="text-xs text-slate-500">{favoriteNotes.length}</div>
         </div>
       </div>
 
       {favoriteNotes.length === 0 ? (
-        <div className="px-6 py-5 text-[12px] text-slate-500">
+        <div className="px-6 py-5 text-xs text-slate-500">
           즐겨찾기한 노트가 없어요.
         </div>
       ) : (
-        <div className="max-h-[224px] overflow-y-auto">
+        <div className="max-h-[21.5rem] overflow-y-auto">
           <div className="divide-y divide-slate-100">
             {favoriteNotes.map(({ note: n, meta }, idx) => (
               <button
@@ -92,20 +88,20 @@ export default function FavoritesSection({
                 title={n.title}
               >
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-[11px] font-semibold text-slate-600">
+                  <span className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-slate-200 bg-white text-xs font-semibold text-slate-600">
                     {String(idx + 1).padStart(2, "0")}
                   </span>
 
                   <div className="min-w-0 flex-1">
-                    <div className="line-clamp-1 text-[13px] font-semibold text-slate-900">
+                    <div className="line-clamp-1 text-sm font-semibold text-slate-900">
                       {n.title}
                     </div>
-                    <div className="mt-0.5 line-clamp-1 text-[11px] text-slate-500">
+                    <div className="mt-0.5 line-clamp-1 text-xs text-slate-500">
                       {meta}
                     </div>
                   </div>
 
-                  <span className="inline-flex items-center gap-1 text-[11px] text-slate-400 opacity-0 transition group-hover:opacity-100">
+                  <span className="inline-flex items-center gap-1 text-xs text-slate-400 opacity-0 transition group-hover:opacity-100">
                     open <FiCornerDownRight className="h-3.5 w-3.5" />
                   </span>
                 </div>
